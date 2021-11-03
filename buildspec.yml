@@ -1,0 +1,39 @@
+version: 0.2
+
+run-as: root
+
+env:
+  variables:
+    DB_NAME: java-db
+    IMAGE_REPO_NAME: go-web-app
+    IMAGE_TAG: latest
+    ACCOUNT_ID: 614936074365
+  exported-variables:
+    - IMAGE_ID
+phases:
+  install:
+    runtime-versions:
+      golang: 1.15
+  pre_build:
+    commands:
+      - echo Install dependencies
+      - go get github.com/aws/aws-lambda-go/lambda
+      - go get github.com/aws/aws-lambda-go/events
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+  build:
+    commands:
+      - go build -o app main.go
+      - chmod +x app
+      - docker build -t go-web-app:$CODEBUILD_BUILD_NUMBER .
+      - docker tag go-web-app:$CODEBUILD_BUILD_NUMBER $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/go-web-app:$CODEBUILD_BUILD_NUMBER
+  post_build:
+    commands:
+      - docker push $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/go-web-app:$CODEBUILD_BUILD_NUMBER
+      - echo Build completed on `date`
+      - export IMAGE_ID=$ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/go-web-app:$CODEBUILD_BUILD_NUMBER
+      - echo "{\"Parameters\":{\"ImageVersion\":\"$IMAGE_ID\"}}" > parameter-file.json
+artifacts:
+  files:
+    - '**/*'
+  name: gowebapp.zip

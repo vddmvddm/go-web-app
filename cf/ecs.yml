@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  SecurityGroupDescription:
+    Description: Security Group Description
+    Type: String
+    Default: test
+  ApplicationName:
+    Type: String
+    Default: go-web-app
+  ImageVersion:
+    Type: String
+    #Default: 614936074365.dkr.ecr.us-east-1.amazonaws.com/go-web-app:latest
+
+Resources:
+  ExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${ApplicationName}-task-execution-role'
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties: 
+      CapacityProviders: 
+        - FARGATE
+      ClusterName: !Sub '${ApplicationName}-cluster'
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties: 
+      ServiceName: !Sub '${ApplicationName}-service'
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration: 
+          AwsVpcConfiguration: 
+              AssignPublicIp: ENABLED
+              SecurityGroups: 
+                - sg-0d9afd65e7d4cbeca
+              Subnets: 
+                - subnet-98513db6
+      TaskDefinition: !Ref TaskDefinition
+    DependsOn: [ECSCluster, TaskDefinition]
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities: 
+        - FARGATE
+      Cpu: 1024
+      Memory: 2048
+      ExecutionRoleArn: !GetAtt [ExecutionRole, Arn]
+      NetworkMode: awsvpc
+      ContainerDefinitions:
+        - Name: !Sub '${ApplicationName}-td'
+          Image: !Ref ImageVersion
+          PortMappings: 
+            - ContainerPort: 8080
+    DependsOn: [ExecutionRole]
+
+
+

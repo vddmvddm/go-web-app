@@ -1,0 +1,35 @@
+version: 0.0
+os: linux
+files:
+  - source: scripts/systemd/app.service
+    destination: /lib/systemd/system/
+  - source: /
+    destination: /var/www/
+permissions:
+  - object: /
+    pattern: "**"
+    owner: root
+    group: root
+hooks:
+  ApplicationStop:
+    #- location: scripts/deregister_from_elb.sh
+    - location: scripts/stop_app.sh
+      timeout: 300
+      runas: root
+  BeforeInstall:
+    - location: scripts/prepare_path.sh
+      timeout: 180
+      runas: root
+  AfterInstall:
+    - location: scripts/permissions.sh
+      timeout: 180
+      runas: root
+  ApplicationStart:
+    - location: scripts/runapp.sh
+    #- location: scripts/register_with_elb.sh
+      timeout: 300
+      runas: root
+  ValidateService:
+    - location: scripts/check.sh
+      timeout: 10
+      runas: root

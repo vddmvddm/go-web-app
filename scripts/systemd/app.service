@@ -1,0 +1,7 @@
+Unit]
+Description=Job that runs GO app web  daemon
+Documentation=man:app(1)
+
+[Service]
+Type=simple
+ExecStart=/var/www/app -mode web /dev/null 2> /dev/null < /dev/null &
